@@ -1,78 +1,72 @@
 import datetime
-import os
 
-from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
 from langchain.tools import tool
-from langchain_community.llms import GigaChat
+from langchain_community.chat_models import ChatOllama
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph import END, MessagesState, StateGraph
-from langgraph.graph.message import add_messages
-
-load_dotenv()
 
 
 @tool
-def get_current_time(input: str) -> dict:
+def get_current_time(input: str) -> str:
     """
-    Returns the current UTC time as an ISO8601 string.
-
-    Returns:
-        dict: Dictionary with the current UTC time under the 'utc' key.
+    Always use this tool to answer any question about the current time.
+    It returns the exact UTC time in ISO 8601 format, e.g. '2025-06-04T16:44:45Z'.
+    Return EXACTLY this format, without any additional text or explanation.
     """
     now = datetime.datetime.now().replace(microsecond=0).isoformat() + "Z"
-    return {"utc": now}
+    return f"The current time is {now}."
 
 
-llm = GigaChat(
-    credentials=os.getenv("GIGACHAT_CREDENTIALS"),
-    scope="GIGACHAT_API_CORP",
-    model="GigaChat-Pro",
-    verify_ssl_certs=False,
+llm = ChatOllama(
+    model="openhermes",
+    temperature=0.2,
 )
 
 tools = [get_current_time]
+
 agent_executor = initialize_agent(
-    tools=tools, llm=llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True
+    tools=tools,
+    llm=llm,
+    agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
+    verbose=True,
+    handle_parsing_errors=True,
 )
 
 
-def agent_node(state):
-    """
-    Processes the latest user message using the agent executor and adds the assistant's response to the state.
+def agent_node(state: MessagesState) -> dict:
+    messages = state["messages"]
 
-    Args:
-        state (MessagesState): The current state containing the conversation messages.
+    user_input = (
+        messages[-1].content if hasattr(messages[-1], "content") else str(messages[-1])
+    )
 
-    Returns:
-        dict: Updated state with the assistant's response message appended.
-    """
-    last_user_message = state["messages"][-1]
+    chat_history = []
+    for msg in messages[:-1]:
+        if isinstance(msg, HumanMessage):
+            chat_history.append((msg.content, None))
+        elif isinstance(msg, AIMessage):
+            if chat_history and chat_history[-1][1] is None:
+                chat_history[-1] = (chat_history[-1][0], msg.content)
 
-    if not isinstance(last_user_message, HumanMessage):
-        raise ValueError("Last message must be a HumanMessage")
+    result = agent_executor.invoke({
+        "input": user_input,
+        "chat_history": chat_history
+    })
 
-    # Получаем ответ агента (список сообщений)
-    result = agent_executor.invoke([last_user_message])
-
-    # Проверяем, что это список BaseMessage
-    if isinstance(result, BaseMessage):
-        new_messages = [result]
-    elif isinstance(result, list) and all(isinstance(m, BaseMessage) for m in result):
-        new_messages = result
+    if isinstance(result, str):
+        reply = AIMessage(content=result)
+    elif isinstance(result, dict) and "output" in result:
+        reply = AIMessage(content=result["output"])
+    elif isinstance(result, BaseMessage):
+        reply = result
     else:
-        new_messages = [AIMessage(content=str(result))]
+        reply = AIMessage(content=str(result))
 
-    return add_messages(state, new_messages)
+    return {"messages": [*messages, reply]}
 
 
 def build_graph():
-    """
-    Builds and compiles the LangGraph state graph for the agent workflow.
-
-    Returns:
-        StateGraph: The compiled state graph with the agent node.
-    """
     builder = StateGraph(MessagesState)
     builder.add_node("agent", agent_node)
     builder.set_entry_point("agent")

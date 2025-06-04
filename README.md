@@ -5,8 +5,24 @@ This is a minimal LangGraph chatbot using a single tool `get_current_time`. It r
 ## 🧪 Run Locally
 
 ```bash
-git clone --branch gigachat https://github.com/softkisik228/moonly_test_task.git
+git clone https://github.com/softkisik228/moonly_test_task.git
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 langgraph dev
+```
+
+## Installing Ollama
+
+Ollama is a local runtime for running large language models (LLMs) like openhermes directly on your machine.
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+## Running openhermes Model
+
+To download and run the openhermes model locally, use:
+
+```bash
+ollama run openhermes
 ```
