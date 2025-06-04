@@ -1,5 +1,7 @@
 {
-    "module": "graph",
-    "call": "build_graph"
+  "graphs": {
+    "default": "graph:build_graph"
+  },
+  "dependencies":  ["."],
+  "env": ".env"
 }
-  
