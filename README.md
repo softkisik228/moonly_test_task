@@ -10,3 +10,18 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 langgraph dev
 ```
+
+## 🔐 Environment Variables
+To use the GigaChat model, you must set the GIGACHAT_CREDENTIALS environment variable with your credentials.
+
+You can provide it in one of two ways:
+
+1. Create a .env file in the project root:
+```.env
+GIGACHAT_CREDENTIALS=#your_gigachat_credentials_here
+```
+2. Or export it manually in the terminal:
+```bash
+export GIGACHAT_CREDENTIALS=#your_gigachat_credentials_here
+```
+Make sure this variable is available when you run langgraph dev, otherwise the model will not work correctly.
