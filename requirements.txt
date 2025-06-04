@@ -1,4 +1,7 @@
-langchain==0.3.7
-langgraph==0.2.45
-langchain-openai==0.2.6
-openai
+langchain>=0.1.16
+langchain-community>=0.0.30
+huggingface_hub>=0.23.0
+langgraph
+langgraph-cli[inmem]
+langchain-gigachat
+python-dotenv
